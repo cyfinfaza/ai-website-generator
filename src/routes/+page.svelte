@@ -1,6 +1,7 @@
 <script>
 	import { onMount, tick } from "svelte";
 	import { conversations } from "$lib/stores";
+	import { exportFile } from "$lib/export";
 	import AreYouSureButton from "../components/AreYouSureButton.svelte";
 
 	let iframeCode = "sample code";
@@ -154,11 +155,20 @@
 		>
 			Restore to this point (delete all after)
 		</button>
+		<div
+			style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px;"
+		>
+			{#if iframeCode?.indexOf("<!DOCTYPE html>") == 0}
+				<button on:click={() => exportFile(iframeCode, conversation)}
+					>&darr; Export</button
+				>
+			{/if}
+		</div>
 	</div>
 	<iframe
 		class="preview"
 		srcdoc={iframeCode}
-		sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"
+		sandbox="allow-scripts allow-forms allow-pointer-lock"
 		frameborder="0"
 	/>
 	<dialog bind:this={selectorDialog}>
@@ -182,8 +192,9 @@
 		width: 100vw;
 		height: 100vh;
 		display: grid;
-		grid-template-columns: 400px 1fr;
+		grid-template-columns: min(400px, 50vw) 1fr;
 		font-size: 1.2em;
+		overflow: hidden;
 	}
 	.conversation {
 		background-color: #222;
@@ -191,6 +202,8 @@
 		flex-direction: column;
 		padding: 1px;
 		gap: 1px;
+		height: 100%;
+		overflow: auto;
 	}
 	.preview {
 		width: 100%;

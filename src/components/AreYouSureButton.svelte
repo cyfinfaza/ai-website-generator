@@ -10,6 +10,11 @@
 	<slot />
 </button>
 <dialog bind:this={dialogElement}>
-	Are you sure? <button on:click={() => dispatch("click")}>Yes</button>
+	Are you sure? <button
+		on:click={() => {
+			dialogElement.close();
+			dispatch("click");
+		}}>Yes</button
+	>
 	<button on:click={dialogElement.close()}>No</button>
 </dialog>
