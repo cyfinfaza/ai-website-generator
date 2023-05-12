@@ -1,11 +1,14 @@
 <script>
 	import { onMount, tick } from "svelte";
 	import { conversations } from "$lib/stores";
+	import AreYouSureButton from "../components/AreYouSureButton.svelte";
 
 	let iframeCode = "sample code";
 	let buttonMessage = "Send";
 	let controlsActive = true;
 	let prompt = "";
+
+	let selectorDialog;
 
 	let currentConversationIndex = -1;
 	// $: changeConversation(currentConversationIndex);
@@ -18,6 +21,7 @@
 			conversation = [];
 		}
 		currentConversationIndex = index;
+		selectorDialog.close();
 	}
 
 	let viewingConvIndex = -1;
@@ -77,12 +81,19 @@
 		viewingConvIndex = conversation.length - 1;
 		$conversations[currentConversationIndex] = conversation;
 	}
+
+	function deleteConversation(index) {
+		$conversations = $conversations.filter((_, i) => i !== index);
+		if (index === currentConversationIndex) {
+			changeConversation(-1);
+		}
+	}
 </script>
 
 <main>
 	<div class="conversation" class:controlsInactive={!controlsActive}>
-		<div style="display: flex;gap: 8px;">
-			<select
+		<div style="display: flex;gap: 1px;">
+			<!-- <select
 				bind:value={currentConversationIndex}
 				on:change={(e) => changeConversation(e.target.value)}
 				disabled={!controlsActive}
@@ -90,22 +101,34 @@
 				{#each $conversations as conv, index}
 					<option value={index}>{conv?.[0]?.content || index + 1}</option>
 				{/each}
-			</select>
+			</select> -->
+			<button
+				on:click={() => selectorDialog.showModal()}
+				style=" width: 100%; text-overflow: ellipsis; overflow: hidden; white-space: nowrap;"
+			>
+				<strong
+					>{$conversations?.[currentConversationIndex]?.[0]?.content ||
+						"(session)"}</strong
+				>
+				<br /> <small>click to switch</small>
+			</button>
 			<button on:click={() => changeConversation(-1)} disabled={!controlsActive}
 				>New Session</button
 			>
 		</div>
-		{#each conversation as message, index}
-			{#if message.role === "user"}
-				<p
-					on:click={() => (viewingConvIndex = index + 1)}
-					class:viewingMe={viewingConvIndex == index + 1}
-					class="conversationBubble"
-				>
-					{message.content}
-				</p>
-			{/if}
-		{/each}
+		<div class="historyList">
+			{#each conversation as message, index}
+				{#if message.role === "user"}
+					<p
+						on:click={() => (viewingConvIndex = index + 1)}
+						class:viewingMe={viewingConvIndex == index + 1}
+						class="conversationBubble"
+					>
+						{message.content}
+					</p>
+				{/if}
+			{/each}
+		</div>
 		<input
 			type="text"
 			autofocus
@@ -123,13 +146,13 @@
 		</button>
 		<button
 			on:click={() => restoreToIndex()}
-			style:display={viewingConvIndex != conversation.length - 1 &&
+			style:display={viewingConvIndex < conversation.length - 1 &&
 			controlsActive
 				? null
 				: "none"}
 			disabled={!controlsActive}
 		>
-			Restore to this point (DELETES STUFF)
+			Restore to this point (delete all after)
 		</button>
 	</div>
 	<iframe
@@ -138,53 +161,46 @@
 		sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"
 		frameborder="0"
 	/>
+	<dialog bind:this={selectorDialog}>
+		<button on:click={() => selectorDialog.close()}>close</button>
+		<div class="selectorList">
+			{#each $conversations as conversation, index}
+				<div>
+					<span>{conversation?.[0]?.content || index + 1}</span>
+					<button on:click={() => changeConversation(index)}>Open</button>
+					<AreYouSureButton on:click={() => deleteConversation(index)}
+						>Delete</AreYouSureButton
+					>
+				</div>
+			{/each}
+		</div>
+	</dialog>
 </main>
 
-<style>
-	:global(body) {
-		margin: 0;
-		background-color: black;
-		color: white;
-		font-family: sans-serif;
-	}
-	button,
-	input,
-	a,
-	select {
-		color: inherit;
-		font-family: inherit;
-	}
+<style lang="scss">
 	main {
 		width: 100vw;
 		height: 100vh;
 		display: grid;
-		grid-template-columns: 300px 1fr;
+		grid-template-columns: 400px 1fr;
+		font-size: 1.2em;
 	}
 	.conversation {
 		background-color: #222;
 		display: flex;
 		flex-direction: column;
-		padding: 12px;
-		gap: 8px;
+		padding: 1px;
+		gap: 1px;
 	}
 	.preview {
 		width: 100%;
 		height: 100%;
 		background-color: white;
 	}
-	input,
-	button,
-	select {
-		border: none;
-		background-color: #fff;
-		color: black;
-		padding: 8px;
-		border-radius: 8px;
-	}
 	.conversationBubble {
-		background-color: #fff2;
+		background-color: #fff3;
 		padding: 8px;
-		border-radius: 8px;
+		border-radius: 0px;
 		margin: 0;
 		box-sizing: border-box;
 	}
@@ -193,7 +209,7 @@
 		pointer-events: none;
 	}
 	.viewingMe {
-		border-left: 8px solid #fe0;
+		border-right: 4px solid #fe0;
 	}
 
 	button,
@@ -216,5 +232,38 @@
 	select {
 		overflow: hidden;
 		width: 200px;
+	}
+
+	.selectorList {
+		display: flex;
+		flex-direction: column;
+		// gap: 1px;
+		> * {
+			display: grid;
+			grid-template-columns: 1fr auto auto;
+			gap: 8px;
+			align-items: center;
+			padding: 8px;
+			&:nth-child(2n) {
+				background-color: #fff1;
+			}
+			&:nth-child(2n-1) {
+				background-color: #fff2;
+			}
+			> span {
+				margin-right: 12px;
+			}
+		}
+	}
+
+	.historyList {
+		display: flex;
+		flex-direction: column;
+		gap: 1px;
+		margin-block: 3px;
+		&:empty {
+			gap: 0;
+			margin-block: 0;
+		}
 	}
 </style>
