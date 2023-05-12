@@ -34,7 +34,7 @@
 
 	async function submitPrompt() {
 		controlsActive = false;
-		buttonMessage = "Loading...";
+		buttonMessage = "Loading (takes a while)...";
 		if (currentConversationIndex == -1) {
 			$conversations = [...$conversations, []];
 			currentConversationIndex = $conversations.length - 1;
@@ -123,7 +123,8 @@
 		</button>
 		<button
 			on:click={() => restoreToIndex()}
-			style:display={viewingConvIndex != conversation.length - 1
+			style:display={viewingConvIndex != conversation.length - 1 &&
+			controlsActive
 				? null
 				: "none"}
 			disabled={!controlsActive}
@@ -131,7 +132,12 @@
 			Restore to this point (DELETES STUFF)
 		</button>
 	</div>
-	<iframe class="preview" srcdoc={iframeCode} frameborder="0" />
+	<iframe
+		class="preview"
+		srcdoc={iframeCode}
+		sandbox="allow-scripts allow-forms allow-pointer-lock allow-same-origin"
+		frameborder="0"
+	/>
 </main>
 
 <style>
