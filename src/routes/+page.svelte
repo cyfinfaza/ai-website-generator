@@ -9,6 +9,8 @@
 	let controlsActive = true;
 	let prompt = "";
 
+	let errorText = "";
+
 	let selectorDialog;
 
 	let currentConversationIndex = -1;
@@ -47,29 +49,40 @@
 		}
 		conversation = [...conversation, { role: "user", content: prompt }];
 		console.log(conversation);
-		// $conversations[currentConversationIndex] = conversation;
 		prompt = "";
-		const response = await fetch("/api/generate", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
-			body: JSON.stringify(conversation),
-		});
-		const data = await response.json();
-		const rawResponse = data.content;
-		// get the code starting with <!DOCTYPE html> and ending with </html> from the response text
-		const htmlCode =
-			rawResponse.match(/<!DOCTYPE html>[\s\S]*<\/html>/)?.[0] ||
-			"<p color='red'>Generation Failed";
-		console.log(conversation);
-		conversation = [...conversation, { role: "assistant", content: htmlCode }];
-		console.log(conversation);
-		$conversations[currentConversationIndex] = conversation;
-		console.log(conversation);
+		errorText = "";
+		try {
+			// $conversations[currentConversationIndex] = conversation;
+			const response = await fetch("/api/generate", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(conversation),
+			});
+			const data = await response.json();
+			const rawResponse = data.content;
+			// get the code starting with <!DOCTYPE html> and ending with </html> from the response text
+			const htmlCode =
+				rawResponse.match(/<!DOCTYPE html>[\s\S]*<\/html>/)?.[0] ||
+				"&#9888; No HTML data";
+			console.log(conversation);
+			conversation = [
+				...conversation,
+				{ role: "assistant", content: htmlCode },
+			];
+			console.log(conversation);
+			$conversations[currentConversationIndex] = conversation;
+			console.log(conversation);
 
-		viewingConvIndex = conversation.length - 1;
-		console.log(conversation);
+			viewingConvIndex = conversation.length - 1;
+			console.log(conversation);
+		} catch (error) {
+			prompt = conversation.pop().content;
+			conversation = conversation;
+			console.error(error);
+			errorText = "Generation Error: " + error;
+		}
 
 		buttonMessage = "Send";
 		controlsActive = true;
@@ -155,6 +168,9 @@
 		>
 			Restore to this point (delete all after)
 		</button>
+		<p style="margin: 0; padding: 8px; text-align: center; color: #F44;">
+			{errorText}
+		</p>
 		<div
 			style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px;"
 		>
