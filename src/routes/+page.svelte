@@ -250,7 +250,7 @@
 	<dialog bind:this={selectorDialog}>
 		<button on:click={() => selectorDialog.close()}>close</button>
 		<div class="selectorList">
-			{#each $conversations as conversation, index}
+			{#each ($conversations).reverse() as conversation, index}
 				<div>
 					<span>{conversation?.[0]?.content || index + 1}</span>
 					<button on:click={() => changeConversation(index)}>Open</button>
