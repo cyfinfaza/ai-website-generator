@@ -2,13 +2,15 @@ import { text, json } from "@sveltejs/kit";
 import { OPENAI_API_KEY } from "$env/static/private";
 import axios from "axios";
 
-const system_prompt = `You will be provided with an HTML coding task. Rate the difficulty of the task on a scale of 1 to 10, with 1 being just a few lines of code, 5 being about one hundred lines of code, and 10 being close to one thousand or more lines. Code with more interactivity will have a higher difficulty. If the question is off-topic or not a coding question, respond with -1. Only provide the number, no explanation. Examples:
+const system_prompt = `You will be provided with an HTML coding task (or list of tasks). Rate the difficulty of the task on a scale of 1 to 10, with 1 being just a few lines of code, 5 being about one hundred lines of code, and 10 being close to one thousand or more lines. Code with more interactivity will have a higher difficulty. If the question is off-topic or not a coding question, respond with -1. Only provide the number, no explanation. Examples:
 "create a heading" - 1
+"make a heading" - 1
 "how do I make a heading?" - -1
 "what is 4 times 4" - -1
 "how do I make pancakes?" - -1
 "make a heading, center it in the middle of the page, make it green, make it dark theme" - 3
 "create a blog post template" - 4
+"make a blog post template, use a nicer font, style the scrollbar, who is miguel" - -1
 "i need a number guessing game" - 5
 "create a to do list app" - 6
 "create a pong game" - 8
@@ -45,7 +47,7 @@ async function requestCompletion(prompt) {
 
 export async function POST({ request }) {
 	const { prompt } = await request.json();
-	console.log(prompt);
+	console.log("Difficulty for: ", prompt);
 	const completion = await requestCompletion(prompt);
 	let difficulty = parseInt(completion.content);
 	// if difficulty is not a number, return -2

@@ -43,12 +43,13 @@
 	async function getPromptDifficulty(convIndex) {
 		try {
 			// $conversations[currentConversationIndex] = conversation;
+			const commandList = conversation.slice(0,convIndex+1).filter(e=>e.role=="user").map(e=>e.content).join(", ")
 			const response = await fetch("/api/difficulty", {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify({prompt: conversation[convIndex].content}),
+				body: JSON.stringify({prompt: commandList}),
 			});
 			const data = await response.json();
 			console.log("Difficulty", data);
@@ -68,8 +69,8 @@
 			tick();
 		}
 		conversation = [...conversation, { role: "user", content: prompt }];
-		if (conversation.length == 1) {
-			getPromptDifficulty(0);
+		if (conversation.length > 0) {
+			getPromptDifficulty(conversation.length - 1);
 		}
 		console.log(conversation);
 		prompt = "";
@@ -84,6 +85,9 @@
 				body: JSON.stringify(conversation.map((m) => ({role: m.role, content: m.content}))),
 			});
 			const data = await response.json();
+			if (data.error) {
+				throw data.error;
+			}
 			const rawResponse = data.content;
 			console.log("Raw Response: \n", rawResponse);
 			// get the code starting with <!DOCTYPE html> and ending with </html> from the response text
@@ -112,7 +116,7 @@
 			prompt = conversation.pop().content;
 			conversation = conversation;
 			console.error(error);
-			errorText = "Generation Error: " + error;
+			errorText = error;
 		}
 
 		buttonMessage = "Send";
@@ -141,7 +145,7 @@
 			if (diffIndex == -1) {
 				output.text = "Off Topic";
 			} else if (diffIndex == -2) {
-				output.text = "Inappropriate";
+				output.text = "Unable";
 			}
 		} else {
 			output.text = "Difficulty: " + diffIndex;
@@ -229,7 +233,12 @@
 			style="margin: 0; padding: 8px; text-align: center; color: #F44;"
 			style:display={errorText ? null : "none"}
 		>
-			{errorText}
+			<span style="padding-inline: 0.2em; background: #F44; color: black;">Error</span> {errorText}
+		</p>
+		<p
+			style="margin: 0; padding: 0.65em; text-align: center; font-size: 0.65em"
+		>
+			You must create a new session if you want to change topic.
 		</p>
 		<div
 			style="display: flex; justify-content: flex-end; gap: 8px; padding: 8px;"
