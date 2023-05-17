@@ -25,6 +25,7 @@
 		}
 		currentConversationIndex = index;
 		selectorDialog.close();
+		errorText = "";
 	}
 
 	let viewingConvIndex = -1;
@@ -39,6 +40,25 @@
 		};
 	});
 
+	async function getPromptDifficulty(convIndex) {
+		try {
+			// $conversations[currentConversationIndex] = conversation;
+			const response = await fetch("/api/difficulty", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({prompt: conversation[convIndex].content}),
+			});
+			const data = await response.json();
+			console.log("Difficulty", data);
+			const difficulty = data.difficulty;
+			conversation[convIndex].difficulty = difficulty;
+		} catch (error) {
+			console.error(error);
+		}
+	}
+
 	async function submitPrompt() {
 		controlsActive = false;
 		buttonMessage = "Loading (takes a while)...";
@@ -48,6 +68,9 @@
 			tick();
 		}
 		conversation = [...conversation, { role: "user", content: prompt }];
+		if (conversation.length == 1) {
+			getPromptDifficulty(0);
+		}
 		console.log(conversation);
 		prompt = "";
 		errorText = "";
@@ -58,18 +81,26 @@
 				headers: {
 					"Content-Type": "application/json",
 				},
-				body: JSON.stringify(conversation),
+				body: JSON.stringify(conversation.map((m) => ({role: m.role, content: m.content}))),
 			});
 			const data = await response.json();
 			const rawResponse = data.content;
+			console.log("Raw Response: \n", rawResponse);
 			// get the code starting with <!DOCTYPE html> and ending with </html> from the response text
 			const htmlCode =
 				rawResponse.match(/<!DOCTYPE html>[\s\S]*<\/html>/)?.[0] ||
 				"&#9888; No HTML data";
+			const everythingOtherThanHtmlCode = rawResponse
+				.replace(htmlCode, "")
+				.trim();
 			console.log(conversation);
 			conversation = [
 				...conversation,
-				{ role: "assistant", content: htmlCode },
+				{
+					role: "assistant",
+					content: htmlCode,
+					nonHtmlContent: everythingOtherThanHtmlCode || undefined,
+				},
 			];
 			console.log(conversation);
 			$conversations[currentConversationIndex] = conversation;
@@ -102,6 +133,22 @@
 			changeConversation(-1);
 		}
 	}
+
+	function getDifficultyVis(diffIndex) {
+		let output = {text: "", color: ""};
+		if (diffIndex < 0) {
+			output.color = "#F008"
+			if (diffIndex == -1) {
+				output.text = "Off Topic";
+			} else if (diffIndex == -2) {
+				output.text = "Inappropriate";
+			}
+		} else {
+			output.text = "Difficulty: " + diffIndex;
+			output.color = `hsla(${(1 - diffIndex / 10) * 120}, 100%, 50%, 50%)`;
+		}
+		return output;
+	}
 </script>
 
 <main>
@@ -133,13 +180,22 @@
 		<div class="historyList">
 			{#each conversation as message, index}
 				{#if message.role === "user"}
-					<p
+					<div
 						on:click={() => (viewingConvIndex = index + 1)}
 						class:viewingMe={viewingConvIndex == index + 1}
 						class="conversationBubble"
 					>
+						{#if message.difficulty}
+							<span style:background={getDifficultyVis(message.difficulty).color} class="difficultyIndicator">{getDifficultyVis(message.difficulty).text}</span>
+						{/if}
 						{message.content}
-					</p>
+						{#if conversation?.[index + 1]?.nonHtmlContent}
+							<br />
+							<p class="nonHtmlResponseElement">
+								{conversation?.[index + 1]?.nonHtmlContent}
+							</p>
+						{/if}
+					</div>
 				{/if}
 			{/each}
 		</div>
@@ -165,10 +221,14 @@
 				? null
 				: "none"}
 			disabled={!controlsActive}
+			style="background: #F008;"
 		>
 			Restore to this point (delete all after)
 		</button>
-		<p style="margin: 0; padding: 8px; text-align: center; color: #F44;">
+		<p
+			style="margin: 0; padding: 8px; text-align: center; color: #F44;"
+			style:display={errorText ? null : "none"}
+		>
 			{errorText}
 		</p>
 		<div
@@ -234,7 +294,7 @@
 		box-sizing: border-box;
 	}
 	.controlsInactive {
-		filter: contrast(0.7);
+		filter: contrast(0.9);
 		pointer-events: none;
 	}
 	.viewingMe {
@@ -294,5 +354,16 @@
 			gap: 0;
 			margin-block: 0;
 		}
+	}
+	.nonHtmlResponseElement {
+		background-color: #08F8;
+		margin: 0;
+		margin-top: 0.5em;
+		padding: 0.5em;
+		font-size: 0.65em;
+	}
+
+	.difficultyIndicator {
+		padding-inline: 0.2em;
 	}
 </style>
